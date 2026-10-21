@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Unlock Treasure</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Canvas Confetti library for the celebration effect -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f111a;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* Custom Animations */
+        .pop-in {
+            animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        
+        @keyframes popIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .float {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-12px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        /* Smooth fade out for chest */
+        .fade-out {
+            opacity: 0;
+            transform: scale(0.9);
+            transition: all 0.4s ease-out;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex items-center justify-center">
+
+    <!-- Mobile-First Container -->
+    <div class="relative w-full h-full max-w-[400px] sm:h-[800px] sm:max-h-[95vh] bg-gradient-to-b from-[#161245] via-[#5c1059] to-[#ff0055] sm:rounded-[40px] sm:shadow-2xl overflow-hidden flex flex-col items-center justify-between py-12 text-white">
+
+        <!-- Result State: Hidden Initially -->
+        <div id="result-view" class="hidden flex-col items-center justify-center h-full w-full absolute inset-0 z-10 p-6 text-center bg-gradient-to-b from-[#161245] via-[#5c1059] to-[#ff0055]">
+            <h1 class="text-3xl font-black mb-10 uppercase tracking-wider text-white drop-shadow-md pop-in" style="animation-delay: 0.1s; opacity: 0;">
+                You Unlocked
+            </h1>
+            
+            <!-- Coin Image (Updated to remove black outline/background) -->
+            <div class="pop-in relative flex items-center justify-center" style="animation-delay: 0.3s; opacity: 0;">
+                <div class="absolute inset-0 bg-yellow-400 blur-2xl opacity-50 rounded-full"></div>
+                <img src="https://i.ibb.co/dJWZLNBR/Tik-Tok.png" alt="Coin Reward" class="relative w-48 h-48 z-10 shadow-2xl" style="border-radius: 50%; object-fit: cover; clip-path: circle(48%);">
+            </div>
+            
+            <h2 id="coin-amount" class="text-4xl font-black mt-10 text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] pop-in" style="animation-delay: 0.5s; opacity: 0;">
+                0
+            </h2>
+        </div>
+
+        <!-- Initial State: Treasure Chest -->
+        <div id="chest-view" class="flex flex-col items-center justify-center h-full w-full z-10 transition-all duration-500">
+            <!-- Chest Image -->
+            <img src="https://i.ibb.co/chCrPvht/Fx-Coin-Chest.webp" alt="Treasure Chest" class="w-72 h-auto object-contain float drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]">
+        </div>
+
+        <!-- Call to Action Button Area -->
+        <div id="button-container" class="z-20 w-full px-8 pb-8 mt-auto transition-opacity duration-300">
+            <button id="action-btn" disabled 
+                class="w-full bg-[#ff2a5f] hover:bg-[#ff0f4a] disabled:bg-gray-500 disabled:opacity-80 disabled:scale-100 transition-all duration-300 transform active:scale-95 text-white font-black py-4 rounded-full text-2xl shadow-[0_8px_20px_rgba(255,0,85,0.4)] tracking-widest flex items-center justify-center">
+                00:05
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            let timeLeft = 5;
+            let timerInterval;
+            let state = 'countdown'; // Valid states: countdown, ready, opened
+            
+            const actionBtn = document.getElementById('action-btn');
+            const buttonContainer = document.getElementById('button-container');
+            const chestView = document.getElementById('chest-view');
+            const resultView = document.getElementById('result-view');
+            const coinAmountText = document.getElementById('coin-amount');
+
+            // Format number with commas
+            function formatNumber(num) {
+                return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            }
+
+            // Confetti Explosion Effect
+            function triggerConfetti() {
+                const duration = 2.5 * 1000;
+                const animationEnd = Date.now() + duration;
+                const defaults = { startVelocity: 35, spread: 360, ticks: 60, zIndex: 100 };
+
+                function randomInRange(min, max) {
+                    return Math.random() * (max - min) + min;
+                }
+
+                const interval = setInterval(function() {
+                    const timeLeft = animationEnd - Date.now();
+
+                    if (timeLeft <= 0) {
+                        return clearInterval(interval);
+                    }
+
+                    const particleCount = 40 * (timeLeft / duration);
+                    // Shoot from slightly below the center
+                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+                }, 250);
+            }
+
+            // Start the 5-second countdown
+            function startCountdown() {
+                timeLeft = 5;
+                actionBtn.innerText = `00:0${timeLeft}`;
+                actionBtn.disabled = true;
+                actionBtn.classList.remove('animate-pulse', 'bg-white', 'text-[#ff2a5f]');
+                
+                timerInterval = setInterval(() => {
+                    timeLeft--;
+                    if (timeLeft > 0) {
+                        actionBtn.innerText = `00:0${timeLeft}`;
+                    } else {
+                        // Countdown finished
+                        clearInterval(timerInterval);
+                        actionBtn.innerText = 'OPEN NOW';
+                        actionBtn.disabled = false;
+                        actionBtn.classList.add('animate-pulse');
+                        state = 'ready';
+                    }
+                }, 1000);
+            }
+
+            // Button Click Handler
+            actionBtn.addEventListener('click', () => {
+                if (state === 'ready') {
+                    // 1. Generate random amount (1,000 to 100,000)
+                    const randomAmount = Math.floor(Math.random() * (100000 - 1000 + 1)) + 1000;
+                    coinAmountText.innerText = formatNumber(randomAmount);
+                    
+                    // 2. Hide chest gracefully
+                    chestView.classList.add('fade-out');
+                    buttonContainer.style.opacity = '0';
+                    
+                    // 3. Show result and trigger confetti after slight delay for transition
+                    setTimeout(() => {
+                        chestView.classList.add('hidden');
+                        buttonContainer.style.display = 'none';
+                        resultView.classList.remove('hidden');
+                        resultView.classList.add('flex');
+                        
+                        triggerConfetti();
+                    }, 400);
+
+                    // 4. Update state
+                    state = 'opened';
+                    
+                } else if (state === 'opened') {
+                    // Reset everything to replay
+                    state = 'countdown';
+                    
+                    // Reset UI views
+                    resultView.classList.add('hidden');
+                    resultView.classList.remove('flex');
+                    chestView.classList.remove('hidden', 'fade-out');
+                    
+                    // Restart logic
+                    startCountdown();
+                }
+            });
+
+            // Initialize App
+            startCountdown();
+        });
+    </script>
+</body>
+</html>
